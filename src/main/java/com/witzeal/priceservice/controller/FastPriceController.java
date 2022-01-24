@@ -1,10 +1,11 @@
 package com.witzeal.priceservice.controller;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -15,10 +16,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.witzeal.priceservice.dao.FastPriceDAOImpl;
+import com.witzeal.priceservice.dao.ProductRepository;
+import com.witzeal.priceservice.jpa.entity.FastPriceEntity;
 import com.witzeal.priceservice.model.Product;
 import com.witzeal.priceservice.service.impl.FastPriceServiceImpl;
 
@@ -32,8 +34,8 @@ public class FastPriceController {
 	private FastPriceServiceImpl fastPriceService;
 
 	@Autowired
-	private FastPriceDAOImpl fastPriceDao;
-
+	private ProductRepository productRepository;
+	
 	@GetMapping("/{productId}/price")
 	public Callable<ResponseEntity<?>> fastPrice(@PathVariable String productId, HttpServletRequest request)
 			throws InterruptedException, ExecutionException {
@@ -52,33 +54,30 @@ public class FastPriceController {
 					return ResponseEntity.badRequest().build();
 				}
 
-				CompletableFuture<Product> amazonPrice = fastPriceService.getFromAmazonPrice(productId);
-				CompletableFuture<Product> flipkartPrice = fastPriceService.getFromFlipkartPrice(productId);
-
-//	    		Wait until they are all done
-				CompletableFuture.allOf(amazonPrice, flipkartPrice).join();
-
-				log.info("AmazonPrice--> " + amazonPrice.get());
-				log.info("FlipkartPrice--> " + amazonPrice.get());
-
-				Product amazon = amazonPrice.get();
-				Product flipkart = flipkartPrice.get();
-
-				if (amazon.getProduct() == null && flipkart.getProduct() == null) {
-					return ResponseEntity.notFound().build();
-				}
-
+				Future<Product> amazonPrice = fastPriceService.getFromAmazonPrice(productId);
+				Future<Product> flipkartPrice = fastPriceService.getFromFlipkartPrice(productId);
+				
+				long totalTime = 0;
 				String source;
-				if (amazon.getPrice() > flipkart.getPrice()) {
-					map.put("price", amazon.getPrice());
-					source = "amazon";
-				} else {
-					map.put("price", flipkart.getPrice());
-					source = "flipkart";
+				while(true) {
+					if(amazonPrice.isDone()) {
+						map.put("price", amazonPrice.get().getPrice());
+						source = "amazon";
+						totalTime = System.currentTimeMillis() - startTime;
+						break;
+					}
+					else if(flipkartPrice.isDone()) {
+						map.put("price", flipkartPrice.get().getPrice());
+						source = "flipkart";
+						totalTime = System.currentTimeMillis() - startTime;
+						break;
+					}
 				}
-
-				long totalTime = System.currentTimeMillis() - startTime;
-				fastPriceDao.insertFastestPrice(userId, productId, map.get("price"), totalTime, source);
+				
+				
+				FastPriceEntity fastPrice = new FastPriceEntity(Integer.parseInt(userId), productId, map.get("price"), new Date(), totalTime, source);
+				
+				productRepository.save(fastPrice);
 				log.info("fastPriceAPI Completed");
 
 				return ResponseEntity.ok().body(map);

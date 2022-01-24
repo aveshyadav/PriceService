@@ -2,6 +2,7 @@ package com.witzeal.priceservice.service.impl;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,7 @@ public class FastPriceServiceImpl {
 	}
 	
 	@Async("asyncExecutor")
-	public CompletableFuture<Product> getFromAmazonPrice(String product) 
+	public Future<Product> getFromAmazonPrice(String product) 
 	{
 		log.info("getFromAmazonPrice Starts");
 		
@@ -51,7 +52,7 @@ public class FastPriceServiceImpl {
 	
 	
 	@Async("asyncExecutor")
-	public CompletableFuture<Product> getFromFlipkartPrice(String product) 
+	public Future<Product> getFromFlipkartPrice(String product) 
 	{
 		
 		log.info("getFromFlipkartPrice Starts");
