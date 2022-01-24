@@ -1,12 +1,16 @@
 package com.witzeal.priceservice.controller;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -36,7 +40,7 @@ public class FastPriceController {
 
 	@Autowired
 	private ProductRepository productRepository;
-	
+
 	@GetMapping("/{productId}/price")
 	public Callable<ResponseEntity<?>> fastPrice(@PathVariable String productId, HttpServletRequest request)
 			throws InterruptedException, ExecutionException {
@@ -57,23 +61,23 @@ public class FastPriceController {
 
 				CompletableFuture<Product> amazonPrice = fastPriceService.getFromAmazonPrice(productId);
 				CompletableFuture<Product> flipkartPrice = fastPriceService.getFromFlipkartPrice(productId);
-				
+
 				log.info("Request call done");
-				
+
 				CompletableFuture<Object> result = CompletableFuture.anyOf(amazonPrice, flipkartPrice);
-				
 				Product product = (Product) result.get();
+
 				if (product.getProduct() == null) {
 					return ResponseEntity.notFound().build();
 				}
-				
+
 				long totalTime = System.currentTimeMillis() - startTime;
-				map.put("price", flipkartPrice.get().getPrice());
-				
-				
+				map.put("price", product.getPrice());
+
 				log.info("fastPriceAPI response map ready");
-				FastPriceEntity fastPrice = new FastPriceEntity(Integer.parseInt(userId), productId, map.get("price"), new Date(), totalTime, product.getSource());
-				
+				FastPriceEntity fastPrice = new FastPriceEntity(Integer.parseInt(userId), productId, map.get("price"),
+						new Date(), totalTime, product.getSource());
+
 				productRepository.save(fastPrice);
 				log.info("fastPriceAPI Completed");
 
@@ -82,5 +86,4 @@ public class FastPriceController {
 		};
 
 	}
-
 }
