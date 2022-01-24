@@ -9,7 +9,7 @@ public class Product implements Serializable{
 	
 	private String product;
 	private long price;
-	
+	private String source;
 	
 	public String getProduct() {
 		return product;
@@ -23,8 +23,14 @@ public class Product implements Serializable{
 	public void setPrice(long price) {
 		this.price = price;
 	}
+	public String getSource() {
+		return source;
+	}
+	public void setSource(String source) {
+		this.source = source;
+	}
 	@Override
 	public String toString() {
-		return "Product [product=" + product + ", price=" + price + "]";
+		return "Product [product=" + product + ", price=" + price + ", source=" + source + "]";
 	}
 }

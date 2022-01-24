@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -54,28 +55,24 @@ public class FastPriceController {
 					return ResponseEntity.badRequest().build();
 				}
 
-				Future<Product> amazonPrice = fastPriceService.getFromAmazonPrice(productId);
-				Future<Product> flipkartPrice = fastPriceService.getFromFlipkartPrice(productId);
+				CompletableFuture<Product> amazonPrice = fastPriceService.getFromAmazonPrice(productId);
+				CompletableFuture<Product> flipkartPrice = fastPriceService.getFromFlipkartPrice(productId);
 				
-				long totalTime = 0;
-				String source;
-				while(true) {
-					if(amazonPrice.isDone()) {
-						map.put("price", amazonPrice.get().getPrice());
-						source = "amazon";
-						totalTime = System.currentTimeMillis() - startTime;
-						break;
-					}
-					else if(flipkartPrice.isDone()) {
-						map.put("price", flipkartPrice.get().getPrice());
-						source = "flipkart";
-						totalTime = System.currentTimeMillis() - startTime;
-						break;
-					}
+				log.info("Request call done");
+				
+				CompletableFuture<Object> result = CompletableFuture.anyOf(amazonPrice, flipkartPrice);
+				
+				Product product = (Product) result.get();
+				if (product.getProduct() == null) {
+					return ResponseEntity.notFound().build();
 				}
 				
+				long totalTime = System.currentTimeMillis() - startTime;
+				map.put("price", flipkartPrice.get().getPrice());
 				
-				FastPriceEntity fastPrice = new FastPriceEntity(Integer.parseInt(userId), productId, map.get("price"), new Date(), totalTime, source);
+				
+				log.info("fastPriceAPI response map ready");
+				FastPriceEntity fastPrice = new FastPriceEntity(Integer.parseInt(userId), productId, map.get("price"), new Date(), totalTime, product.getSource());
 				
 				productRepository.save(fastPrice);
 				log.info("fastPriceAPI Completed");

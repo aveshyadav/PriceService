@@ -29,7 +29,7 @@ public class FastPriceServiceImpl {
 	}
 	
 	@Async("asyncExecutor")
-	public Future<Product> getFromAmazonPrice(String product) 
+	public CompletableFuture<Product> getFromAmazonPrice(String product) 
 	{
 		log.info("getFromAmazonPrice Starts");
 		
@@ -37,6 +37,7 @@ public class FastPriceServiceImpl {
 		try {
 			productPrice = restTemplate.getForObject("https://price-amazon.free.beeceptor.com/service/"+product+"/price", Product.class);
 
+			productPrice.setSource("amazon");
 			log.info("productDetails, {}", productPrice);
 			log.info("getFromAmazonPrice completed");
 		}
@@ -52,7 +53,7 @@ public class FastPriceServiceImpl {
 	
 	
 	@Async("asyncExecutor")
-	public Future<Product> getFromFlipkartPrice(String product) 
+	public CompletableFuture<Product> getFromFlipkartPrice(String product) 
 	{
 		
 		log.info("getFromFlipkartPrice Starts");
@@ -60,6 +61,7 @@ public class FastPriceServiceImpl {
 		try {
 			productPrice = restTemplate.getForObject("https://price-flipkart.free.beeceptor.com/service/"+product+"/price", Product.class);
 
+			productPrice.setSource("flipkart");
 			log.info("productDetails, {}", productPrice);
 			log.info("getFromFlipkartPrice completed");
 		}
